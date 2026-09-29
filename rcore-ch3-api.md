@@ -10,7 +10,7 @@
 
 ## 实验要求
 
-1. **代码修改范围**：仅允许修改 [os/src/task/mod.rs](os/src/task/mod.rs) 和 [os/src/task/task.rs](os/src/task/task.rs)，完成 `TASK_MANAGER` 初始化以及 `run_first_task()`、`suspend_current_and_run_next()`、`exit_current_and_run_next()` 四处 TODO。内部辅助函数可自行设计，保留数据结构、对外接口及已提供的系统调用计数实现。不得修改其他任何代码文件、汇编、链接脚本、构建配置或测试文件；可以新增实验报告等说明文档。
+1. **代码修改范围**：任务管理实现仅允许修改 [os/src/task/mod.rs](os/src/task/mod.rs) 和 [os/src/task/task.rs](os/src/task/task.rs)，完成 `TASK_MANAGER` 初始化以及 `run_first_task()`、`suspend_current_and_run_next()`、`exit_current_and_run_next()` 四处 TODO。内部辅助函数可自行设计，保留数据结构、对外接口及已提供的系统调用计数实现。若启动栈不足，允许按下文提示调整 [os/src/entry.asm](os/src/entry.asm) 中 `boot_stack` 的预留容量。除此之外，不得修改其他代码文件、汇编、链接脚本、构建配置或测试文件；可以新增实验报告等说明文档。
 
 2. **静态分析与动态跟踪**：阅读 `ch3` 的参考实现，使用 GDB 跟踪首个任务启动、当前任务暂停与恢复、任务退出后的调度，分析任务状态、当前任务编号和上下文切换的对应关系。操作可参考 [ch3 源代码分析与动态跟踪文档](../../blob/ch3/rcore-ch3-analyze.md)。报告应结合源代码说明调用顺序及其原因，记录关键断点、使用的 GDB 命令、观察到的状态和分析结论；可附必要的代码片段或源码链接。
 
@@ -95,6 +95,8 @@ pub struct TaskManagerInner {
 description: `TASK_MANAGER` 是整个内核共用的任务管理器。其初始化需要根据已经加载的应用，形成完整的任务管理状态，使每个有效任务都具备首次运行的条件。初始化完成后，三个公共调度接口以及已提供的系统调用统计接口都访问这个管理器。
 
 本实现点位于 `lazy_static!` 中的初始化表达式。该表达式在全局管理器首次被访问时求值，产生由 `TASK_MANAGER` 持有的 `TaskManager`。初始化结果描述各应用准备运行的状态，首个应用的实际启动由 `run_first_task()` 完成。是否定义构造函数，以及如何组织初始化所需的内部代码，由学生自行决定。
+
+> **启动栈提示**：`TASK_MANAGER` 初始化在 `boot_stack` 上执行。任务数组中的系统调用计数器合计约占 51 KiB，构造和返回任务管理器时还可能产生临时副本，尤其在 `MODE=debug` 下，可能导致启动栈溢出。当前 [os/src/entry.asm](os/src/entry.asm) 使用 `.space 4096 * 16` 预留 64 KiB 启动栈；若容量不足，可按需要增大该值，并在实验报告中说明原因。`config.rs` 中的 `KERNEL_STACK_SIZE` 控制任务内核栈，调整它不会增大 `boot_stack`。
 
 ```rust
 lazy_static! {
@@ -218,7 +220,7 @@ pub fn exit_current_and_run_next() {
 
 `record_current_syscall()` 和 `current_syscall_count()` 继续由既有系统调用代码使用。它们依赖 `TASK_MANAGER` 中当前任务编号与控制块数组的一致性，并直接访问对应任务的 `syscall_counts`，因此任务管理的实现需要与这些字段约定兼容。
 
-启动汇编、陷阱汇编和链接脚本均按仓库原样提供。学生的实现范围是任务管理骨架所在的 `os/src/task/mod.rs` 与 `os/src/task/task.rs`；当前四处 TODO 均位于前者。数据结构和对外接口的约定保持不变，内部辅助函数可以自由定义。
+启动汇编、陷阱汇编和链接脚本均按仓库原样提供。任务管理的实现范围是 `os/src/task/mod.rs` 与 `os/src/task/task.rs`；当前四处 TODO 均位于前者。启动栈不足时，仅允许额外调整 `os/src/entry.asm` 中 `boot_stack` 的预留容量。数据结构和对外接口的约定保持不变，内部辅助函数可以自由定义。
 
 ## 运行与验收
 
