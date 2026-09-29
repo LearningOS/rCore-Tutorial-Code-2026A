@@ -5,7 +5,12 @@
 /// user app's stack size
 pub const USER_STACK_SIZE: usize = 4096 * 2;
 /// kernel stack size
-pub const KERNEL_STACK_SIZE: usize = 4096 * 2;
+pub const KERNEL_STACK_SIZE: usize = if cfg!(debug_assertions) {
+    // Unoptimized process creation needs larger stack frames for GDB tracing.
+    4096 * 16
+} else {
+    4096 * 2
+};
 /// kernel heap size
 pub const KERNEL_HEAP_SIZE: usize = 0x200_0000;
 
