@@ -169,7 +169,16 @@ impl<const BASE_ADDR: usize> CharDevice for NS16550a<BASE_ADDR> {
     /// Keep checking the buffer and registering a waiter in one protected
     /// access. Release the borrow before schedule(), then retry on resumption.
     fn read(&self) -> u8 {
-        todo!("drivers::chardev::NS16550a::read")
+        loop {
+            let task_cx_ptr = {
+                let mut inner = self.inner.exclusive_access();
+                if let Some(ch) = inner.read_buffer.pop_front() {
+                    return ch;
+                }
+                self.condvar.wait_no_sched()
+            };
+            schedule(task_cx_ptr);
+        }
     }
     fn write(&self, ch: u8) {
         let mut inner = self.inner.exclusive_access();
@@ -180,6 +189,16 @@ impl<const BASE_ADDR: usize> CharDevice for NS16550a<BASE_ADDR> {
     /// After releasing the device borrow, signal one waiter if bytes arrived.
     /// Do not wait for another byte or schedule from the interrupt handler.
     fn handle_irq(&self) {
-        todo!("drivers::chardev::NS16550a::handle_irq")
+        let received = self.inner.exclusive_session(|inner| {
+            let mut received = false;
+            while let Some(ch) = inner.ns16550a.read() {
+                inner.read_buffer.push_back(ch);
+                received = true;
+            }
+            received
+        });
+        if received {
+            self.condvar.signal();
+        }
     }
 }

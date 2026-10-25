@@ -53,18 +53,30 @@ impl VirtIOGpuWrapper {
     /// setup_cursor(), and retain the device in gpu for the buffer's lifetime.
     /// Do not allocate a replacement pixel buffer or take ownership of DMA pages.
     pub fn new() -> Self {
-        todo!("drivers::gpu::VirtIOGpuWrapper::new")
+        let mut gpu = unsafe {
+            VirtIOGpu::<VirtioHal>::new(&mut *(VIRTIO7 as *mut VirtIOHeader)).unwrap()
+        };
+        let framebuffer = gpu.setup_framebuffer().unwrap();
+        let ptr = framebuffer.as_mut_ptr();
+        let len = framebuffer.len();
+        // The DMA allocation stays valid while the stored GPU owns it.
+        let fb = unsafe { core::slice::from_raw_parts(ptr, len) };
+        setup_cursor(&mut gpu);
+        Self {
+            gpu: unsafe { UPIntrFreeCell::new(gpu) },
+            fb,
+        }
     }
 }
 
 impl GpuDevice for VirtIOGpuWrapper {
     /// Flush the existing GPU framebuffer, retaining the device's protected access.
     fn flush(&self) {
-        todo!("drivers::gpu::VirtIOGpuWrapper::flush")
+        self.gpu.exclusive_access().flush().unwrap();
     }
     /// Return a mutable view of the stored framebuffer with the same address/length.
     /// Follow the existing single-core use; do not allocate, clear, or free it here.
     fn get_framebuffer(&self) -> &mut [u8] {
-        todo!("drivers::gpu::VirtIOGpuWrapper::get_framebuffer")
+        unsafe { core::slice::from_raw_parts_mut(self.fb.as_ptr() as *mut u8, self.fb.len()) }
     }
 }

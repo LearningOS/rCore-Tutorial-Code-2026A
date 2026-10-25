@@ -30,19 +30,55 @@ impl BlockDevice for VirtIOBlock {
     /// In the latter, wait on the submitted token and check the response after
     /// resumption. Keep the response and buffer valid while the device uses them.
     fn read_block(&self, block_id: usize, buf: &mut [u8]) {
-        todo!("drivers::block::VirtIOBlock::read_block")
+        let non_blocking = *DEV_NON_BLOCKING_ACCESS.exclusive_access();
+        if !non_blocking {
+            self.virtio_blk
+                .exclusive_access()
+                .read_block(block_id, buf)
+                .expect("Error when reading VirtIOBlk");
+            return;
+        }
+
+        let mut resp = BlkResp::default();
+        let task_cx_ptr = self.virtio_blk.exclusive_session(|blk| {
+            // Keep interrupts masked until this token has a registered waiter.
+            let token = unsafe { blk.read_block_nb(block_id, buf, &mut resp).unwrap() };
+            self.condvars.get(&token).unwrap().wait_no_sched()
+        });
+        // The device borrow is released; buf and resp remain alive while blocked.
+        schedule(task_cx_ptr);
+        assert_eq!(resp.status(), RespStatus::Ok, "Error when reading VirtIOBlk");
     }
     /// Write one block from the caller's buffer, returning only on completion.
     ///
     /// Follow the same mode selection, protected wait registration, borrow
     /// release, and response validation requirements as read_block().
     fn write_block(&self, block_id: usize, buf: &[u8]) {
-        todo!("drivers::block::VirtIOBlock::write_block")
+        let non_blocking = *DEV_NON_BLOCKING_ACCESS.exclusive_access();
+        if !non_blocking {
+            self.virtio_blk
+                .exclusive_access()
+                .write_block(block_id, buf)
+                .expect("Error when writing VirtIOBlk");
+            return;
+        }
+
+        let mut resp = BlkResp::default();
+        let task_cx_ptr = self.virtio_blk.exclusive_session(|blk| {
+            let token = unsafe { blk.write_block_nb(block_id, buf, &mut resp).unwrap() };
+            self.condvars.get(&token).unwrap().wait_no_sched()
+        });
+        schedule(task_cx_ptr);
+        assert_eq!(resp.status(), RespStatus::Ok, "Error when writing VirtIOBlk");
     }
     /// Consume every currently completed token and signal its condition variable.
     /// Do not wait for future completions or switch tasks in this handler.
     fn handle_irq(&self) {
-        todo!("drivers::block::VirtIOBlock::handle_irq")
+        self.virtio_blk.exclusive_session(|blk| {
+            while let Ok(token) = blk.pop_used() {
+                self.condvars.get(&token).unwrap().signal();
+            }
+        });
     }
 }
 
