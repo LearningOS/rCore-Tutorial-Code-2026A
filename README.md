@@ -2,9 +2,9 @@
 
 ## ch9 实验说明
 
-当前分支 `ch9` 提供第 9 章参考源代码，来自 [rCore-Tutorial-v3 的 ch9 分支](https://github.com/rcore-os/rCore-Tutorial-v3/tree/ch9)。
+当前分支 `ch9-api` 用于第 9 章的独立实现。请按 [ch9 API 实验文档](./rcore-ch9-api.md) 完成 UART 串口、virtio-blk 和 virtio-gpu 三个驱动中的八处 TODO，并在实验报告中比较自己的实现与 `ch9` 参考实现的异同。请在本分支提交代码、说明文档及过程日志。
 
-本章实验参考书为 [《rCore-Tutorial-Book-v3》第九章：I/O 设备管理](https://rcore-os.cn/rCore-Tutorial-Book-v3/chapter9/index.html)。请按 [ch9 源代码分析与动态跟踪文档](./rcore-ch9-analyze.md)，围绕 UART 串口、virtio-blk 和 virtio-gpu 三个驱动完成静态分析、GDB 动态跟踪和实验报告。报告保存到 `reports/lab9.md`。
+本章实验参考书为 [《rCore-Tutorial-Book-v3》第九章：I/O 设备管理](https://rcore-os.cn/rCore-Tutorial-Book-v3/chapter9/index.html)。参考实现的阅读与调试见 [ch9 源代码分析与动态跟踪文档](../../blob/ch9/rcore-ch9-analyze.md)。报告保存到 `reports/lab9.md`。
 
 ## 工具链更新（ch9 必读）
 
@@ -52,7 +52,7 @@ cargo install cargo-binutils --locked
 
 （`$ID` 为章节编号，可选1-8）
 
-- **ch9 实验**：参考 [《rCore-Tutorial-Book-v3》第九章：I/O 设备管理](https://rcore-os.cn/rCore-Tutorial-Book-v3/chapter9/index.html)，按 [ch9 分析文档](./rcore-ch9-analyze.md) 完成 UART、virtio-blk 和 virtio-gpu 三个驱动的分析与跟踪。
+- **ch9 实验**：参考 [《rCore-Tutorial-Book-v3》第九章：I/O 设备管理](https://rcore-os.cn/rCore-Tutorial-Book-v3/chapter9/index.html)，按 [ch9 API 实验文档](./rcore-ch9-api.md) 完成三个驱动的独立实现，结合 [ch9 分析文档](../../blob/ch9/rcore-ch9-analyze.md) 完成分析与跟踪。
 
 **代码提交必须包含开发过程的操作日志和 AI 交互日志**。请使用下方介绍的工具记录实验过程，并将日志随实验代码一起提交到实验仓库。
 

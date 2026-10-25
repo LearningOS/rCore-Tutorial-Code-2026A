@@ -1,3 +1,12 @@
+//! UART driver for the chapter 9 API exercise.
+//!
+//! Implement buffered reading and interrupt handling. Keep the raw register
+//! operations, constructors, initialization, and output implementation provided.
+//! Register a waiter while the receive buffer is protected, and release the
+//! device borrow before scheduling. Recheck the buffer after waking up.
+
+#![allow(dead_code, unused_imports, unused_variables)]
+
 ///! Ref: https://www.lammertbies.nl/comm/info/serial-uart
 ///! Ref: ns16550a datasheet: https://datasheetspdf.com/pdf-file/605590/NationalSemiconductor/NS16550A/1
 ///! Ref: ns16450 datasheet: https://datasheetspdf.com/pdf-file/1311818/NationalSemiconductor/NS16450/1
@@ -155,32 +164,22 @@ impl<const BASE_ADDR: usize> CharDevice for NS16550a<BASE_ADDR> {
         drop(inner);
     }
 
+    /// Return the oldest buffered byte, waiting when the buffer is empty.
+    ///
+    /// Keep checking the buffer and registering a waiter in one protected
+    /// access. Release the borrow before schedule(), then retry on resumption.
     fn read(&self) -> u8 {
-        loop {
-            let mut inner = self.inner.exclusive_access();
-            if let Some(ch) = inner.read_buffer.pop_front() {
-                return ch;
-            } else {
-                let task_cx_ptr = self.condvar.wait_no_sched();
-                drop(inner);
-                schedule(task_cx_ptr);
-            }
-        }
+        todo!("drivers::chardev::NS16550a::read")
     }
     fn write(&self, ch: u8) {
         let mut inner = self.inner.exclusive_access();
         inner.ns16550a.write(ch);
     }
+    /// Drain available UART bytes into the FIFO receive buffer.
+    ///
+    /// After releasing the device borrow, signal one waiter if bytes arrived.
+    /// Do not wait for another byte or schedule from the interrupt handler.
     fn handle_irq(&self) {
-        let mut count = 0;
-        self.inner.exclusive_session(|inner| {
-            while let Some(ch) = inner.ns16550a.read() {
-                count += 1;
-                inner.read_buffer.push_back(ch);
-            }
-        });
-        if count > 0 {
-            self.condvar.signal();
-        }
+        todo!("drivers::chardev::NS16550a::handle_irq")
     }
 }

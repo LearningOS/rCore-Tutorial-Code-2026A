@@ -1,3 +1,11 @@
+//! GPU driver for the chapter 9 API exercise.
+//!
+//! Initialize the device and its framebuffer, expose that same memory, and
+//! submit display updates. Keep the types, device address, and cursor helper.
+//! The driver owns the DMA resources; the framebuffer slice does not own them.
+
+#![allow(dead_code, unused_imports, unused_variables)]
+
 use crate::drivers::bus::virtio::VirtioHal;
 use crate::sync::UPIntrFreeCell;
 use alloc::{sync::Arc, vec::Vec};
@@ -20,47 +28,43 @@ pub struct VirtIOGpuWrapper {
     fb: &'static [u8],
 }
 static BMP_DATA: &[u8] = include_bytes!("../../assert/mouse.bmp");
-impl VirtIOGpuWrapper {
-    pub fn new() -> Self {
-        unsafe {
-            let mut virtio =
-                VirtIOGpu::<VirtioHal>::new(&mut *(VIRTIO7 as *mut VirtIOHeader)).unwrap();
 
-            let fbuffer = virtio.setup_framebuffer().unwrap();
-            let len = fbuffer.len();
-            let ptr = fbuffer.as_mut_ptr();
-            let fb = core::slice::from_raw_parts_mut(ptr, len);
-
-            let bmp = Bmp::<Rgb888>::from_slice(BMP_DATA).unwrap();
-            let raw = bmp.as_raw();
-            let mut b = Vec::new();
-            for i in raw.image_data().chunks(3) {
-                let mut v = i.to_vec();
-                b.append(&mut v);
-                if i == [255, 255, 255] {
-                    b.push(0x0)
-                } else {
-                    b.push(0xff)
-                }
-            }
-            virtio.setup_cursor(b.as_slice(), 50, 50, 50, 50).unwrap();
-
-            Self {
-                gpu: UPIntrFreeCell::new(virtio),
-                fb,
-            }
+/// Provided cursor setup, preserving the reference implementation's appearance.
+fn setup_cursor(gpu: &mut VirtIOGpu<'static, VirtioHal>) {
+    let bmp = Bmp::<Rgb888>::from_slice(BMP_DATA).unwrap();
+    let raw = bmp.as_raw();
+    let mut b = Vec::new();
+    for i in raw.image_data().chunks(3) {
+        let mut v = i.to_vec();
+        b.append(&mut v);
+        if i == [255, 255, 255] {
+            b.push(0x0)
+        } else {
+            b.push(0xff)
         }
+    }
+    gpu.setup_cursor(b.as_slice(), 50, 50, 50, 50).unwrap();
+}
+
+impl VirtIOGpuWrapper {
+    /// Initialize VirtIOGpu at VIRTIO7 and set up its framebuffer.
+    ///
+    /// Save the device-owned framebuffer's address and length, call the provided
+    /// setup_cursor(), and retain the device in gpu for the buffer's lifetime.
+    /// Do not allocate a replacement pixel buffer or take ownership of DMA pages.
+    pub fn new() -> Self {
+        todo!("drivers::gpu::VirtIOGpuWrapper::new")
     }
 }
 
 impl GpuDevice for VirtIOGpuWrapper {
+    /// Flush the existing GPU framebuffer, retaining the device's protected access.
     fn flush(&self) {
-        self.gpu.exclusive_access().flush().unwrap();
+        todo!("drivers::gpu::VirtIOGpuWrapper::flush")
     }
+    /// Return a mutable view of the stored framebuffer with the same address/length.
+    /// Follow the existing single-core use; do not allocate, clear, or free it here.
     fn get_framebuffer(&self) -> &mut [u8] {
-        unsafe {
-            let ptr = self.fb.as_ptr() as *const _ as *mut u8;
-            core::slice::from_raw_parts_mut(ptr, self.fb.len())
-        }
+        todo!("drivers::gpu::VirtIOGpuWrapper::get_framebuffer")
     }
 }
